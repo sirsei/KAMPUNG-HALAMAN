@@ -5,7 +5,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 -- Create the main window
 local Window = Rayfield:CreateWindow({
     Name = "🎣 KAMPUNG HALAMAN FISHING HUB V1",
-    LoadingTitle = "TUNGGU SEBENTAR...",
+    LoadingTitle = "KELA LODING...",
     LoadingSubtitle = "By Sei",
     ConfigurationSaving = {
         Enabled = true,
