@@ -23,14 +23,13 @@ local TabFishing = Window:CreateTab("🎣 Auto Fish", 4483362458)
 local autofishEnabled = false
 local lastRod = nil  -- menyimpan rod terakhir
 
--- AUTO FISH FINAL
 local function autoFish()
     local player = game:GetService("Players").LocalPlayer
     local character = player.Character
     local humanoid = character:FindFirstChild("Humanoid")
     local backpack = player:WaitForChild("Backpack")
 
-    -- 1. DETEKSI rod yang sedang dipegang
+    
     local currentRod = nil
     for _, item in ipairs(character:GetChildren()) do
         if item:IsA("Tool") and item:FindFirstChild("Mechanics") and item.Mechanics:FindFirstChild("Remotes") then
@@ -39,10 +38,8 @@ local function autoFish()
         end
     end
 
-    -- 2. Jika tidak pegang, pakai rod terakhir
     local rodToUse = currentRod or lastRod
 
-    -- 3. Jika masih tidak ada, ambil rod pertama dari backpack
     if not rodToUse then
         for _, item in ipairs(backpack:GetChildren()) do
             if item:IsA("Tool") and item:FindFirstChild("Mechanics") and item.Mechanics:FindFirstChild("Remotes") then
@@ -52,7 +49,6 @@ local function autoFish()
         end
     end
 
-    -- 4. Jika tetap tidak ada rod
     if not rodToUse then
         Rayfield:Notify({
             Title = "Error",
@@ -62,20 +58,16 @@ local function autoFish()
         return
     end
 
-    -- 5. Auto equip rod jika masih di backpack
     if rodToUse.Parent == backpack then
         humanoid:EquipTool(rodToUse)
         task.wait(0.7)
     end
 
-    -- Simpan rod terakhir
     lastRod = rodToUse
 
-    -- 6. CAST
     rodToUse.Mechanics.Remotes.CastEvent:FireServer(false, 10)
     task.wait(7)
 
-    -- 7. PULL / MINIGAME
     rodToUse.Mechanics.Remotes.MiniGame:FireServer(true)
 end
 
