@@ -15,7 +15,9 @@ local AvailableRods = {
     "Pancingan Bambu", "Pancingan Jamur", "Pancingan Panas", "Pancingan Trisula",
     "Pancingan Kristal", "Pancingan Petir Hitam", "Pancingan Gitar", "Pancingan Unyu",
     "Pancingan Dingin", "Pancingan Corrupt", "Pancingan Kuil", "Pancingan Dewa",
-    "Pancingan Sabit", "Pancingan Ubur Ubur", "Pancingan Kuncen", "Pancingan Parasol", "Pancingan Galaksi", "Pancingan Ksatria", "Pancingan Kegelapan", "Pancingan Volcano"
+    "Pancingan Sabit", "Pancingan Ubur Ubur", "Pancingan Kuncen", "Pancingan Parasol",
+    "Pancingan Galaksi", "Pancingan Ksatria", "Pancingan Kegelapan", "Pancingan Volcano",
+    "Pancingan Karuhun", "Pancingan Executive"
 }
 
 local rarities = { "Common", "UnCommon", "Rare", "Epic", "Legendary", "Mythical", "Unknown" }
