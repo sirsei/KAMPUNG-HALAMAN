@@ -487,31 +487,59 @@ local function updateBPList()
 
     local counts = {}
 
+    local function addCount(name, amount)
+        counts[name] = (counts[name] or 0) + amount
+    end
+
     local function scan(container)
         for _, item in ipairs(container:GetChildren()) do
-            if item:IsA("Tool")
-            or item:IsA("Model")
-            or item:IsA("StringValue")
-            or item:IsA("IntValue") then
-                counts[item.Name] = (counts[item.Name] or 0) + 1
+
+            -- 🔹 TOOL (cek Attribute Amount)
+            if item:IsA("Tool") then
+                local amount =
+                    item:GetAttribute("Amount")
+                    or item:GetAttribute("Count")
+                    or item:GetAttribute("Stack")
+                    or 1
+
+                addCount(item.Name, amount)
             end
+
+            -- 🔹 FOLDER ITEM STACK
+            if item:IsA("Folder") then
+                local amount =
+                    item:FindFirstChild("Amount")
+                    or item:FindFirstChild("Count")
+                    or item:FindFirstChild("Stack")
+
+                if amount and amount:IsA("IntValue") then
+                    addCount(item.Name, amount.Value)
+                end
+            end
+
+            -- 🔹 INT VALUE LANGSUNG (Shard, dll)
+            if item:IsA("IntValue") then
+                addCount(item.Name, item.Value)
+            end
+
+            -- 🔁 recursive (kalau inventory bersarang)
+            scan(item)
         end
     end
 
-    -- Scan Backpack
+    -- 📦 Scan semua sumber inventory
     scan(Player.Backpack)
 
-    -- Scan Character
     if Player.Character then
         scan(Player.Character)
     end
 
-    -- 🔥 OPTIONAL: Scan folder inventory khusus (kalau ada)
     local inv = Player:FindFirstChild("Inventory")
     if inv then
         scan(inv)
     end
 
+    -- 🖨️ Render ke UI
     for name, qty in pairs(counts) do
         local l = Instance.new("TextLabel", bpScroll)
         l.Size = UDim2.new(1, 0, 0, 18)
@@ -524,13 +552,6 @@ local function updateBPList()
     end
 end
 
-Player.Backpack.ChildAdded:Connect(updateBPList)
-Player.Backpack.ChildRemoved:Connect(updateBPList)
-
-Player.CharacterAdded:Connect(function()
-    task.wait(1)
-    updateBPList()
-end)
 
 task.delay(0.1, updateBPList)
 
@@ -562,7 +583,7 @@ end)
 
 --// ================= CORE LOOP =================
 task.spawn(function()
-    while task.wait(0.3) do
+    while task.wait(0.05) do
         if not AUTO then continue end
         
         local rod = getNextRod()
@@ -571,6 +592,23 @@ task.spawn(function()
         task.wait(0.1)
         
         pcall(function()
+            local camera = workspace.CurrentCamera
+            local defaultFOV = 70 -- Atur sesuai FOV normal kamu
+            
+            -- 🔥 FIX CAMERA GLITCH: Paksa kunci FOV agar tidak bisa diubah script lain
+            local cameraFix = game:GetService("RunService").RenderStepped:Connect(function()
+                camera.FieldOfView = defaultFOV
+            end)
+
+            -- 🔥 UI NUKER: Hapus UI secara instan saat muncul
+            local uiNuker = Player.PlayerGui.ChildAdded:Connect(function(child)
+                if child.Name:find("MiniGame") then
+                    task.wait() 
+                    child:Destroy()
+                end
+            end)
+
+            -- 2. Proses Casting
             rod.Mechanics.Remotes.CastEvent:FireServer(false, 7)
             
             local castPos
@@ -581,16 +619,37 @@ task.spawn(function()
             end)
             
             local timeout = 0
-            while not castPos and timeout < 0.1 do 
+            while not castPos and timeout < 0.2 do 
                 timeout = timeout + task.wait(0.01)
             end
             
             if castPos then
                 ReplicatedStorage.Remotes.BaitLandedEvent:FireServer(rod, castPos, "TerrainWater")
             end
+			
+			local root = Player.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                local instantPos = root.Position + (root.CFrame.LookVector * 15) + Vector3.new(0, -5, 0)
+                ReplicatedStorage.Remotes.BaitLandedEvent:FireServer(rod, instantPos, "TerrainWater")
+            end
 
+            -- 3. Selesaikan Minigame
             task.wait(INPUT_DELAY)
             rod.Mechanics.Remotes.MiniGame:FireServer(true)
+            task.wait(0.1)
+            rod.Mechanics.Remotes.MiniGame:FireServer(false)
+
+            -- 4. CLEANUP: Matikan pengunci kamera dan UI nuker
+            cameraFix:Disconnect()
+            uiNuker:Disconnect()
+            camera.FieldOfView = defaultFOV
+
+            -- 5. RE-EQUIP (Reset Rod)
+            if Player.Character and rod.Parent == Player.Character then
+                rod.Parent = Player.Backpack 
+                task.wait(0.1) 
+                Player.Character.Humanoid:EquipTool(rod) 
+            end
         end)
         
         RodIndex = (RodIndex % #RodList) + 1
