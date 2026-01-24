@@ -53,9 +53,7 @@ end)
 local DarkraiX = loadstring(game:HttpGet(
     "https://raw.githubusercontent.com/GamingScripter/Kavo-Ui/main/Darkrai%20Ui", true))()
 
-local Library = DarkraiX:Window(
-    "SeiX", "😜", "", Enum.KeyCode.RightControl
-)
+local Library = DarkraiX:Window("SeiX", "😜", "", Enum.KeyCode.RightControl)
 
 --// SIMPLE OPEN BUTTON (RAINBOW BORDER)
 local openGui = Instance.new("ScreenGui", Player.PlayerGui)
@@ -73,7 +71,6 @@ openBtn.BorderSizePixel = 0
 openBtn.AutoButtonColor = false
 openBtn.Active = true
 openBtn.Draggable = true
-
 Instance.new("UICorner", openBtn).CornerRadius = UDim.new(0,6)
 
 local stroke = Instance.new("UIStroke", openBtn)
@@ -100,7 +97,7 @@ Tab1:Toggle("Start Auto Fishing", false, function(v)
     AUTO = v
 end)
 
-Tab1:Slider("Delay (Detik)", 1, 10, 2, function(v)
+Tab1:Slider("Delay Cast (Detik)", 1, 10, 2, function(v)
     INPUT_DELAY = v
 end)
 
@@ -124,11 +121,8 @@ Tab2:Toggle("Enable Auto Sell", false, function(v)
     AUTO_SELL_ENABLED = v
 end)
 
-Tab2:Textbox("Sell Delay (Seconds)", "5", true, function(v)
-    local n = tonumber(v)
-    if n and n >= 0.5 then
-        AUTO_SELL_DELAY = n
-    end
+Tab2:Slider("Auto Sell Delay (Detik)", 1, 60, 5, function(v)
+    AUTO_SELL_DELAY = v
 end)
 
 Tab2:Seperator("Auto Sell Rarity")
@@ -139,36 +133,89 @@ for _, r in ipairs(rarities) do
     end)
 end
 
--- 🔥 MANUAL SELL (1 CLICK)
 Tab2:Seperator("Sell Once (Manual)")
 
 for _, r in ipairs(rarities) do
     Tab2:Button("Sell "..r.." (1x)", function()
-        ReplicatedStorage:WaitForChild("RequestSell"):FireServer(r)
+        ReplicatedStorage.RequestSell:FireServer(r)
     end)
 end
 
---// LOOP : AUTO SELL
+--// AUTO SELL LOOP (100% FIX)
 task.spawn(function()
-    local timer = 0
-    while task.wait(0.5) do
-        if AUTO_SELL_ENABLED then
-            timer += 0.5
-            if timer >= AUTO_SELL_DELAY then
-                for rarity, enabled in pairs(selectedRarities) do
-                    if enabled then
-                        ReplicatedStorage.RequestSell:FireServer(rarity)
-                    end
+    local lastSell = tick()
+    while task.wait(0.3) do
+        if AUTO_SELL_ENABLED and tick() - lastSell >= AUTO_SELL_DELAY then
+            for rarity, enabled in pairs(selectedRarities) do
+                if enabled then
+                    ReplicatedStorage.RequestSell:FireServer(rarity)
                 end
-                timer = 0
             end
-        else
-            timer = 0
+            lastSell = tick()
         end
     end
 end)
 
---// LOOP : FISHING
+--// TAB 3 : SEMI ADMIN
+local Tab3 = Library:Tab("Semi Admin")
+
+local camera = workspace.CurrentCamera
+local selectedPlayer = nil
+local playerDropdown
+
+-- ambil list player
+local function getPlayerList()
+    local list = {}
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= Player then
+            table.insert(list, plr.Name)
+        end
+    end
+    return list
+end
+
+-- dropdown player
+playerDropdown = Tab3:Dropdown("Select Player", getPlayerList(), function(name)
+    selectedPlayer = Players:FindFirstChild(name)
+end)
+
+-- 🔄 REFRESH PLAYER LIST (SATU TOMBOL SAJA)
+Tab3:Button("Refresh Player List", function()
+    pcall(function()
+        playerDropdown:Refresh(getPlayerList())
+    end)
+end)
+
+-- 👁 VIEW PLAYER
+Tab3:Button("View Player", function()
+    if selectedPlayer
+        and selectedPlayer.Character
+        and selectedPlayer.Character:FindFirstChild("Humanoid") then
+        camera.CameraSubject = selectedPlayer.Character.Humanoid
+    end
+end)
+
+-- ❌ STOP VIEW
+Tab3:Button("Stop View", function()
+    if Player.Character and Player.Character:FindFirstChild("Humanoid") then
+        camera.CameraSubject = Player.Character.Humanoid
+    end
+end)
+
+-- 🌀 TELEPORT TO PLAYER
+Tab3:Button("Teleport To Player", function()
+    if selectedPlayer
+        and selectedPlayer.Character
+        and selectedPlayer.Character:FindFirstChild("HumanoidRootPart")
+        and Player.Character
+        and Player.Character:FindFirstChild("HumanoidRootPart") then
+
+        Player.Character.HumanoidRootPart.CFrame =
+            selectedPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0,0,-3)
+    end
+end)
+
+--// FISHING LOOP
 task.spawn(function()
     while task.wait(0.1) do
         if AUTO and #RodList > 0 then
