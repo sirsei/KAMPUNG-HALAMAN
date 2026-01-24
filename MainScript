@@ -10,6 +10,9 @@ local ANTI_AFK = true
 local INPUT_DELAY = 1.8
 local RodList = {}
 local RodIndex = 1
+local AUTO_SELL_ENABLED = false
+local AUTO_SELL_DELAY = 5
+local selectedRarities = {}
 
 local AvailableRods = {
     "Pancingan Bambu", "Pancingan Jamur", "Pancingan Panas", "Pancingan Trisula",
@@ -201,7 +204,7 @@ miniBtn.TextSize = 22
 Instance.new("UICorner", miniBtn).CornerRadius = UDim.new(0, 8)
 
 local container = Instance.new("ScrollingFrame", main)
-container.Size = UDim2.new(1, -24, 1, -70)
+container.Size = UDim2.new(1, -24, 1, -195)
 container.Position = UDim2.fromOffset(12, 60)
 container.BackgroundTransparency = 1
 container.ScrollBarThickness = 2
@@ -462,98 +465,98 @@ toggle.MouseButton1Click:Connect(function()
     end
 end)
 
---// 3. BACKPACK LIST (REALTIME QUANTITY)
-local bpFrame = Instance.new("Frame", main)
-bpFrame.Size = UDim2.new(1, -30, 0, 90)
-bpFrame.Position = UDim2.new(0, 15, 1, -105)
-bpFrame.BackgroundColor3 = Theme.Secondary
-Instance.new("UICorner", bpFrame).CornerRadius = UDim.new(0, 10)
+--// ================= AUTO SELL SYSTEM (REPLACED BP LIST) =================
+local sellSystemFrame = Instance.new("Frame", main)
+sellSystemFrame.Size = UDim2.new(1, -30, 0, 110) -- Ukuran disesuaikan
+sellSystemFrame.Position = UDim2.new(0, 15, 1, -125)
+sellSystemFrame.BackgroundColor3 = Theme.Secondary
+Instance.new("UICorner", sellSystemFrame).CornerRadius = UDim.new(0, 10)
 
-local bpScroll = Instance.new("ScrollingFrame", bpFrame)
-bpScroll.Size = UDim2.new(1, -10, 1, -10)
-bpScroll.Position = UDim2.fromOffset(5, 5)
-bpScroll.BackgroundTransparency = 1
-bpScroll.ScrollBarThickness = 2
-bpScroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-bpScroll.CanvasSize = UDim2.new(0,0,0,0)
-Instance.new("UIListLayout", bpScroll).Padding = UDim.new(0, 3)
+-- Membuat Label (Tulisan "Delay:")
+local delayLabel = Instance.new("TextLabel", sellSystemFrame)
+delayLabel.Size = UDim2.fromOffset(50, 20)
+delayLabel.Position = UDim2.fromOffset(10, 45) -- Di bawah tombol Toggle
+delayLabel.Text = "Delay (detik):"
+delayLabel.TextColor3 = Theme.TextDark
+delayLabel.BackgroundTransparency = 1
+delayLabel.TextSize = 12
+delayLabel.Font = Enum.Font.Gotham
 
-local function updateBPList()
-    for _, v in ipairs(bpScroll:GetChildren()) do
-        if v:IsA("TextLabel") then
-            v:Destroy()
-        end
+-- Membuat Kotak Input (Tempat ngetik angka)
+local delayInput = Instance.new("TextBox", sellSystemFrame)
+delayInput.Size = UDim2.fromOffset(40, 20)
+delayInput.Position = UDim2.fromOffset(70, 45)
+delayInput.Text = tostring(AUTO_SELL_DELAY) -- Munculkan angka delay saat ini
+delayInput.BackgroundColor3 = Theme.Main
+delayInput.TextColor3 = Theme.Accent
+delayInput.Font = Enum.Font.GothamBold
+delayInput.TextSize = 12
+Instance.new("UICorner", delayInput)
+
+delayInput.FocusLost:Connect(function(enterPressed)
+    local angkaBaru = tonumber(delayInput.Text) -- Mengubah teks jadi angka
+    
+    if angkaBaru and angkaBaru >= 0.1 then
+        AUTO_SELL_DELAY = angkaBaru -- Simpan angka baru ke script
+        print("Jeda Auto Sell diganti ke: " .. angkaBaru)
+    else
+        -- Jika yang diketik bukan angka atau terlalu kecil, balikkan ke angka awal
+        delayInput.Text = tostring(AUTO_SELL_DELAY)
     end
+end)
 
-    local counts = {}
+local autoSellToggle = Instance.new("TextButton", sellSystemFrame)
+autoSellToggle.Size = UDim2.new(1, -20, 0, 30)
+autoSellToggle.Position = UDim2.fromOffset(10, 10)
+autoSellToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+autoSellToggle.Text = "AUTO SELL: OFF"
+autoSellToggle.TextColor3 = Theme.Red
+autoSellToggle.Font = Enum.Font.GothamBold
+autoSellToggle.TextSize = 12
+Instance.new("UICorner", autoSellToggle)
 
-    local function addCount(name, amount)
-        counts[name] = (counts[name] or 0) + amount
-    end
+autoSellToggle.MouseButton1Click:Connect(function()
+    AUTO_SELL_ENABLED = not AUTO_SELL_ENABLED
+    autoSellToggle.Text = AUTO_SELL_ENABLED and "AUTO SELL: ON" or "AUTO SELL: OFF"
+    autoSellToggle.TextColor3 = AUTO_SELL_ENABLED and Theme.Green or Theme.Red
+end)
 
-    local function scan(container)
-        for _, item in ipairs(container:GetChildren()) do
+-- Checkbox Rarity (Mini List)
+local scrollSell = Instance.new("ScrollingFrame", sellSystemFrame)
+scrollSell.Size = UDim2.new(1, -20, 0, 50)
+scrollSell.Position = UDim2.fromOffset(10, 70)
+scrollSell.BackgroundTransparency = 1
+scrollSell.CanvasSize = UDim2.new(0, 0, 0, #rarities * 22)
+scrollSell.ScrollBarThickness = 2
+local sellLayout = Instance.new("UIListLayout", scrollSell)
 
-            -- 🔹 TOOL (cek Attribute Amount)
-            if item:IsA("Tool") then
-                local amount =
-                    item:GetAttribute("Amount")
-                    or item:GetAttribute("Count")
-                    or item:GetAttribute("Stack")
-                    or 1
-
-                addCount(item.Name, amount)
-            end
-
-            -- 🔹 FOLDER ITEM STACK
-            if item:IsA("Folder") then
-                local amount =
-                    item:FindFirstChild("Amount")
-                    or item:FindFirstChild("Count")
-                    or item:FindFirstChild("Stack")
-
-                if amount and amount:IsA("IntValue") then
-                    addCount(item.Name, amount.Value)
-                end
-            end
-
-            -- 🔹 INT VALUE LANGSUNG (Shard, dll)
-            if item:IsA("IntValue") then
-                addCount(item.Name, item.Value)
-            end
-
-            -- 🔁 recursive (kalau inventory bersarang)
-            scan(item)
-        end
-    end
-
-    -- 📦 Scan semua sumber inventory
-    scan(Player.Backpack)
-
-    if Player.Character then
-        scan(Player.Character)
-    end
-
-    local inv = Player:FindFirstChild("Inventory")
-    if inv then
-        scan(inv)
-    end
-
-    -- 🖨️ Render ke UI
-    for name, qty in pairs(counts) do
-        local l = Instance.new("TextLabel", bpScroll)
-        l.Size = UDim2.new(1, 0, 0, 18)
-        l.BackgroundTransparency = 1
-        l.Text = "🎒 "..name.." x"..qty
-        l.TextColor3 = Theme.Accent
-        l.Font = Enum.Font.GothamBold
-        l.TextSize = 12
-        l.TextXAlignment = Enum.TextXAlignment.Left
-    end
+for _, rarity in ipairs(rarities) do
+    local row = Instance.new("Frame", scrollSell)
+    row.Size = UDim2.new(1, 0, 0, 20)
+    row.BackgroundTransparency = 1
+    
+    local check = Instance.new("TextButton", row)
+    check.Size = UDim2.fromOffset(16, 16)
+    check.Position = UDim2.fromOffset(0, 2)
+    check.Text = ""
+    check.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+    Instance.new("UICorner", check)
+    
+    local lbl = Instance.new("TextLabel", row)
+    lbl.Size = UDim2.new(1, -25, 1, 0)
+    lbl.Position = UDim2.fromOffset(25, 0)
+    lbl.Text = rarity
+    lbl.TextColor3 = Theme.TextDark
+    lbl.Font = Enum.Font.Gotham
+    lbl.TextSize = 11
+    lbl.BackgroundTransparency = 1
+    lbl.TextXAlignment = "Left"
+    
+    check.MouseButton1Click:Connect(function()
+        selectedRarities[rarity] = not selectedRarities[rarity]
+        check.BackgroundColor3 = selectedRarities[rarity] and Theme.Green or Color3.fromRGB(50, 50, 60)
+    end)
 end
-
-
-task.delay(0.1, updateBPList)
 
 --// ================= WINDOW LOGIC =================
 closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
@@ -565,8 +568,8 @@ miniBtn.MouseButton1Click:Connect(function()
     -- hide konten utama
     container.Visible = not minimized
 
-    -- 🔥 hide backpack list juga
-    bpFrame.Visible = not minimized
+    -- 🔥 hide panel auto sell agar tidak melayang saat di-minimize
+sellSystemFrame.Visible = not minimized
 
     local targetSize = minimized
         and UDim2.fromOffset(360, 50)
@@ -584,6 +587,14 @@ end)
 --// ================= CORE LOOP =================
 task.spawn(function()
     while task.wait(0.05) do
+        -- Logic Auto Sell (Cek setiap interval delay)
+        if AUTO_SELL_ENABLED and tick() % AUTO_SELL_DELAY < 0.1 then
+            for rarity, isSelected in pairs(selectedRarities) do
+                if isSelected then
+                    ReplicatedStorage:WaitForChild("RequestSell"):FireServer(rarity)
+                end
+            end
+        end
         if not AUTO then continue end
         
         local rod = getNextRod()
