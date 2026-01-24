@@ -1,71 +1,46 @@
--- KAHA AUTO FISHING FINAL VERSION (UPDATED V2)
+--// SERVICES
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
-local VirtualUser = game:GetService("VirtualUser")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
+local VirtualUser = game:GetService("VirtualUser")
+local VIM = game:GetService("VirtualInputManager")
 
+--// SETTINGS
 local AUTO = false
-local ANTI_AFK = true
-local INPUT_DELAY = 1.8
-local RodList = {}
-local RodIndex = 1
 local AUTO_SELL_ENABLED = false
 local AUTO_SELL_DELAY = 5
+local INPUT_DELAY = 1.8
+local ANTI_AFK = true
+
 local selectedRarities = {}
+local RodList = {}
+local RodIndex = 1
 
+--// DATA
 local AvailableRods = {
-    "Pancingan Bambu", "Pancingan Jamur", "Pancingan Panas", "Pancingan Trisula",
-    "Pancingan Kristal", "Pancingan Petir Hitam", "Pancingan Gitar", "Pancingan Unyu",
-    "Pancingan Dingin", "Pancingan Corrupt", "Pancingan Kuil", "Pancingan Dewa",
-    "Pancingan Sabit", "Pancingan Ubur Ubur", "Pancingan Kuncen", "Pancingan Parasol",
-    "Pancingan Galaksi", "Pancingan Ksatria", "Pancingan Kegelapan", "Pancingan Volcano",
-    "Pancingan Karuhun", "Pancingan Executive"
+    "Pancingan Bambu","Pancingan Jamur","Pancingan Panas","Pancingan Trisula",
+    "Pancingan Kristal","Pancingan Petir Hitam","Pancingan Gitar","Pancingan Unyu",
+    "Pancingan Dingin","Pancingan Corrupt","Pancingan Kuil","Pancingan Dewa",
+    "Pancingan Sabit","Pancingan Ubur Ubur","Pancingan Kuncen","Pancingan Parasol",
+    "Pancingan Galaksi","Pancingan Ksatria","Pancingan Kegelapan","Pancingan Volcano",
+    "Pancingan Karuhun","Pancingan Executive"
 }
 
-local rarities = { "Common", "UnCommon", "Rare", "Epic", "Legendary", "Mythical", "Unknown" }
-
---// ================= THEME COLORS =================
-local Theme = {
-    Main = Color3.fromRGB(12, 12, 15),
-    Secondary = Color3.fromRGB(20, 20, 25),
-    Accent = Color3.fromRGB(114, 137, 218),
-    Green = Color3.fromRGB(46, 204, 113),
-    Red = Color3.fromRGB(231, 76, 60),
-    Text = Color3.fromRGB(255, 255, 255),
-    TextDark = Color3.fromRGB(180, 180, 180)
+local rarities = {
+    "Common","UnCommon","Rare","Epic","Legendary","Mythical","Unknown"
 }
 
---// ================= LOGIC FUNCTIONS =================
+--// FUNCTIONS
 local function findRod(name)
-    if Player.Character then
-        for _, v in ipairs(Player.Character:GetChildren()) do
-            if v:IsA("Tool") and v.Name == name then return v end
-        end
+    if Player.Character and Player.Character:FindFirstChild(name) then
+        return Player.Character[name]
     end
-    for _, v in ipairs(Player.Backpack:GetChildren()) do
-        if v:IsA("Tool") and v.Name == name then return v end
+    if Player.Backpack:FindFirstChild(name) then
+        return Player.Backpack[name]
     end
 end
 
-local function equipRod(rod)
-    if rod and rod.Parent == Player.Backpack then
-        Player.Character.Humanoid:EquipTool(rod)
-    end
-end
-
-local function getNextRod()
-    if #RodList == 0 then return end
-    for i = 1, #RodList do
-        local idx = ((RodIndex - 1 + i - 1) % #RodList) + 1
-        local rod = findRod(RodList[idx])
-        if rod then
-            RodIndex = idx
-            return rod
-        end
-    end
-end
-
+--// ANTI AFK
 Player.Idled:Connect(function()
     if ANTI_AFK then
         VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
@@ -74,596 +49,158 @@ Player.Idled:Connect(function()
     end
 end)
 
---// ================= UI CONSTRUCTION =================
-local gui = Instance.new("ScreenGui", Player.PlayerGui)
-gui.Name = "SeiXFishing"
-gui.ResetOnSpawn = false
+--// UI LOAD
+local DarkraiX = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/GamingScripter/Kavo-Ui/main/Darkrai%20Ui", true))()
 
---// 1. WELCOME ANIMATION
-local function ShowWelcome()
-    local welcomeFrame = Instance.new("Frame", gui)
-    welcomeFrame.Size = UDim2.fromOffset(280, 65)
-    welcomeFrame.Position = UDim2.new(0.5, 0, 1.1, 0)
-    welcomeFrame.AnchorPoint = Vector2.new(0.5, 0.5)
-    welcomeFrame.BackgroundColor3 = Theme.Main
-    welcomeFrame.BorderSizePixel = 0
-    Instance.new("UICorner", welcomeFrame).CornerRadius = UDim.new(0, 12)
-    local s = Instance.new("UIStroke", welcomeFrame)
-    s.Color = Theme.Accent
-    s.Thickness = 2
+local Library = DarkraiX:Window(
+    "SeiX", "😜", "", Enum.KeyCode.RightControl
+)
 
-    local l = Instance.new("TextLabel", welcomeFrame)
-    l.Size = UDim2.fromScale(1, 1)
-    l.BackgroundTransparency = 1
-    l.Text = "Welcome! " .. Player.Name
-    l.TextColor3 = Theme.Text
-    l.Font = Enum.Font.GothamBold
-    l.TextSize = 16
+--// SIMPLE OPEN BUTTON (RAINBOW BORDER)
+local openGui = Instance.new("ScreenGui", Player.PlayerGui)
+openGui.ResetOnSpawn = false
 
-    welcomeFrame:TweenPosition(UDim2.new(0.5, 0, 0.85, 0), "Out", "Back", 0.6, true)
-    task.wait(2.5)
-    welcomeFrame:TweenPosition(UDim2.new(0.5, 0, 1.2, 0), "In", "Quart", 0.6, true)
-    task.delay(0.6, function() welcomeFrame:Destroy() end)
-end
+local openBtn = Instance.new("TextButton", openGui)
+openBtn.Size = UDim2.fromOffset(70, 32)
+openBtn.Position = UDim2.new(0, 15, 0.5, -16)
+openBtn.BackgroundColor3 = Color3.fromRGB(18,18,18)
+openBtn.Text = "OPEN"
+openBtn.Font = Enum.Font.GothamBold
+openBtn.TextSize = 13
+openBtn.TextColor3 = Color3.fromRGB(240,240,240)
+openBtn.BorderSizePixel = 0
+openBtn.AutoButtonColor = false
+openBtn.Active = true
+openBtn.Draggable = true
 
-local main = Instance.new("Frame", gui)
-main.Size = UDim2.fromOffset(360, 480)
-main.Position = UDim2.fromScale(0.5, 0.5)
-main.AnchorPoint = Vector2.new(0.5, 0.5)
-main.BackgroundColor3 = Theme.Main
-main.BorderSizePixel = 0
-main.Active = true
-main.Draggable = true
-main.BackgroundTransparency = 0.5
-Instance.new("UICorner", main).CornerRadius = UDim.new(0, 16)
+Instance.new("UICorner", openBtn).CornerRadius = UDim.new(0,6)
 
---// ================= OVERLAY SYSTEM =================
-local overlay = Instance.new("Frame", main)
-overlay.Name = "Overlay"
-overlay.Size = UDim2.fromScale(1,1)
-overlay.BackgroundTransparency = 1
-overlay.ZIndex = 50
-overlay.ClipsDescendants = false
+local stroke = Instance.new("UIStroke", openBtn)
+stroke.Thickness = 2
+stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
 
--- Drop Shadow Effect
-local shadow = Instance.new("ImageLabel", main)
-shadow.Name = "Shadow"
-shadow.BackgroundTransparency = 1
-shadow.Position = UDim2.new(0, -15, 0, -15)
-shadow.Size = UDim2.new(1, 30, 1, 30)
-shadow.ZIndex = 0
-shadow.Image = "rbxassetid://6014264792"
-shadow.ImageColor3 = Color3.new(0,0,0)
-shadow.ImageTransparency = 0.5
-
-local topBar = Instance.new("Frame", main)
-topBar.Size = UDim2.new(1, 0, 0, 50)
-topBar.BackgroundTransparency = 1
-
--- TITLE CONTAINER (Untuk memisahkan SeiX dan PREMIUM)
-local titleFrame = Instance.new("Frame", topBar)
-titleFrame.Size = UDim2.new(1, -100, 1, 0)
-titleFrame.Position = UDim2.fromOffset(20, 0)
-titleFrame.BackgroundTransparency = 1
-
-local titleLayout = Instance.new("UIListLayout", titleFrame)
-titleLayout.FillDirection = Enum.FillDirection.Horizontal
-titleLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-titleLayout.Padding = UDim.new(0, 8)
-
--- SeiX (RAINBOW)
-local seiXText = Instance.new("TextLabel", titleFrame)
-seiXText.AutomaticSize = Enum.AutomaticSize.XY
-seiXText.BackgroundTransparency = 1
-seiXText.Text = "SeiX"
-seiXText.TextColor3 = Color3.new(1,1,1)
-seiXText.Font = Enum.Font.GothamBold
-seiXText.TextSize = 18
-
--- PREMIUM (GRADIENT)
-local premiumText = Instance.new("TextLabel", titleFrame)
-premiumText.AutomaticSize = Enum.AutomaticSize.XY
-premiumText.BackgroundTransparency = 1
-premiumText.Text = "KaHa"
-premiumText.TextColor3 = Color3.new(1,1,1)
-premiumText.Font = Enum.Font.GothamBold
-premiumText.TextSize = 18
-
-local premGradient = Instance.new("UIGradient", premiumText)
-premGradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 215, 0)), -- Gold
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 120, 0))  -- Orange semu merah
-})
-
--- ANIMASI RAINBOW SEIX
 task.spawn(function()
-    while task.wait() do
-        local hue = tick() % 3 / 3
-        seiXText.TextColor3 = Color3.fromHSV(hue, 0.6, 1)
+    local h = 0
+    while task.wait(0.03) do
+        h = (h + 0.005) % 1
+        stroke.Color = Color3.fromHSV(h,1,1)
     end
 end)
 
-local closeBtn = Instance.new("TextButton", topBar)
-closeBtn.Size = UDim2.fromOffset(32, 32)
-closeBtn.Position = UDim2.new(1, -42, 0, 9)
-closeBtn.Text = "×"
-closeBtn.BackgroundColor3 = Theme.Secondary
-closeBtn.TextColor3 = Theme.Red
-closeBtn.Font = Enum.Font.GothamBold
-closeBtn.TextSize = 22
-Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 8)
+openBtn.MouseButton1Click:Connect(function()
+    VIM:SendKeyEvent(true, Enum.KeyCode.RightControl, false, game)
+    VIM:SendKeyEvent(false, Enum.KeyCode.RightControl, false, game)
+end)
 
-local miniBtn = Instance.new("TextButton", topBar)
-miniBtn.Size = UDim2.fromOffset(32, 32)
-miniBtn.Position = UDim2.new(1, -80, 0, 9)
-miniBtn.Text = "−"
-miniBtn.BackgroundColor3 = Theme.Secondary
-miniBtn.TextColor3 = Theme.Text
-miniBtn.Font = Enum.Font.GothamBold
-miniBtn.TextSize = 22
-Instance.new("UICorner", miniBtn).CornerRadius = UDim.new(0, 8)
+--// TAB 1 : MAIN FISHING
+local Tab1 = Library:Tab("Main Fishing")
 
-local container = Instance.new("ScrollingFrame", main)
-container.Size = UDim2.new(1, -24, 1, -195)
-container.Position = UDim2.fromOffset(12, 60)
-container.BackgroundTransparency = 1
-container.ScrollBarThickness = 2
-container.CanvasSize = UDim2.new(0,0,0,0)
-container.AutomaticCanvasSize = Enum.AutomaticSize.Y
-container.ScrollBarImageColor3 = Theme.Accent
+Tab1:Toggle("Start Auto Fishing", false, function(v)
+    AUTO = v
+end)
 
-local listLayout = Instance.new("UIListLayout", container)
-listLayout.Padding = UDim.new(0, 12)
-listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Tab1:Slider("Delay (Detik)", 1, 10, 2, function(v)
+    INPUT_DELAY = v
+end)
 
--- Helper function for buttons
-local function createButton(name, color, order)
-    local btn = Instance.new("TextButton", container)
-    btn.Size = UDim2.new(1, -4, 0, 48)
-    btn.BackgroundColor3 = Theme.Secondary
-    btn.Text = name
-    btn.TextColor3 = Theme.Text
-    btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 14
-    btn.LayoutOrder = order
-    btn.AutoButtonColor = false
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
-    
-    local stroke = Instance.new("UIStroke", btn)
-    stroke.Color = color
-    stroke.Thickness = 1.2
-    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    
-    btn.MouseEnter:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(30,30,38)}):Play()
+Tab1:Dropdown("Select Rod Loop", AvailableRods, function(r)
+    local i = table.find(RodList, r)
+    if i then
+        table.remove(RodList, i)
+    else
+        table.insert(RodList, r)
+    end
+end)
+
+Tab1:Toggle("Anti-AFK", true, function(v)
+    ANTI_AFK = v
+end)
+
+--// TAB 2 : AUTO SELL
+local Tab2 = Library:Tab("Auto Sell")
+
+Tab2:Toggle("Enable Auto Sell", false, function(v)
+    AUTO_SELL_ENABLED = v
+end)
+
+Tab2:Textbox("Sell Delay (Seconds)", "5", true, function(v)
+    local n = tonumber(v)
+    if n and n >= 0.5 then
+        AUTO_SELL_DELAY = n
+    end
+end)
+
+Tab2:Seperator("Auto Sell Rarity")
+
+for _, r in ipairs(rarities) do
+    Tab2:Toggle("Auto Sell "..r, false, function(v)
+        selectedRarities[r] = v
     end)
-    btn.MouseLeave:Connect(function()
-        TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.Secondary}):Play()
-    end)
-    
-    return btn, stroke
 end
 
--- 1. ANTI AFK
-local afkBtn, afkStroke = createButton("ANTI-AFK: ON", Theme.Accent, 1)
-afkBtn.MouseButton1Click:Connect(function()
-    ANTI_AFK = not ANTI_AFK
-    afkBtn.Text = ANTI_AFK and "ANTI-AFK: ON" or "ANTI-AFK: OFF"
-    afkStroke.Color = ANTI_AFK and Theme.Accent or Color3.fromRGB(60, 60, 70)
-end)
+-- 🔥 MANUAL SELL (1 CLICK)
+Tab2:Seperator("Sell Once (Manual)")
 
--- 2. DELAY SETTING
-local delayFrame = Instance.new("Frame", container)
-delayFrame.Size = UDim2.new(1, -4, 0, 48)
-delayFrame.BackgroundColor3 = Theme.Secondary
-delayFrame.LayoutOrder = 2
-Instance.new("UICorner", delayFrame).CornerRadius = UDim.new(0, 10)
-
-local dLabel = Instance.new("TextLabel", delayFrame)
-dLabel.Size = UDim2.new(0.5, 0, 1, 0)
-dLabel.Position = UDim2.fromOffset(15, 0)
-dLabel.Text = "Wait (s)"
-dLabel.TextColor3 = Theme.TextDark
-dLabel.BackgroundTransparency = 1
-dLabel.Font = Enum.Font.GothamSemibold
-dLabel.TextSize = 13
-dLabel.TextXAlignment = Enum.TextXAlignment.Left
-
-local delayBox = Instance.new("TextBox", delayFrame)
-delayBox.Size = UDim2.fromOffset(60, 28)
-delayBox.Position = UDim2.new(1, -75, 0.5, -14)
-delayBox.BackgroundColor3 = Theme.Main
-delayBox.Text = tostring(INPUT_DELAY)
-delayBox.TextColor3 = Theme.Accent
-delayBox.Font = Enum.Font.GothamBold
-delayBox.TextSize = 14
-Instance.new("UICorner", delayBox).CornerRadius = UDim.new(0, 6)
-
-delayBox.FocusLost:Connect(function()
-    local v = tonumber(delayBox.Text)
-    if v and v >= 0.5 then INPUT_DELAY = v end
-    delayBox.Text = tostring(INPUT_DELAY)
-end)
-
--- 3. ROD SELECTION
-local rodDrop, rodStroke = createButton("SELECT ROD LOOP  ▼", Color3.fromRGB(60,60,70), 3)
-local rodFrame = Instance.new("ScrollingFrame", overlay)
-rodFrame.Size = UDim2.fromOffset(320, 0)
-rodFrame.BackgroundColor3 = Color3.fromRGB(15,15,20)
-rodFrame.Visible = false
-rodFrame.ScrollBarThickness = 2
-rodFrame.ZIndex = 60
-rodFrame.CanvasSize = UDim2.new(0,0,0,#AvailableRods * 36)
-rodFrame.ClipsDescendants = true
-Instance.new("UICorner", rodFrame).CornerRadius = UDim.new(0,10)
-
-local rodLayout = Instance.new("UIListLayout", rodFrame)
-rodLayout.Padding = UDim.new(0,2)
-
-local function updateRodPos()
-    local p = rodDrop.AbsolutePosition
-    local s = rodDrop.AbsoluteSize
-    local m = main.AbsolutePosition
-
-    rodFrame.Position = UDim2.fromOffset(
-        p.X - m.X,
-        p.Y - m.Y + s.Y + 6
-    )
+for _, r in ipairs(rarities) do
+    Tab2:Button("Sell "..r.." (1x)", function()
+        ReplicatedStorage:WaitForChild("RequestSell"):FireServer(r)
+    end)
 end
 
-rodDrop.MouseButton1Click:Connect(function()
-    updateRodPos()
-    rodFrame.Visible = not rodFrame.Visible
-
-    TweenService:Create(
-        rodFrame,
-        TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-        {Size = rodFrame.Visible and UDim2.fromOffset(320,160) or UDim2.fromOffset(320,0)}
-    ):Play()
-
-    rodDrop.Text = rodFrame.Visible and "SELECT ROD LOOP  ▲" or "SELECT ROD LOOP  ▼"
-end)
-
-for _, rodName in ipairs(AvailableRods) do
-    local btn = Instance.new("TextButton", rodFrame)
-    btn.Size = UDim2.new(1,-8,0,34)
-    btn.Text = "  "..rodName
-    btn.BackgroundTransparency = 1
-    btn.TextColor3 = Theme.TextDark
-    btn.Font = Enum.Font.Gotham
-    btn.TextSize = 13
-    btn.TextXAlignment = Enum.TextXAlignment.Left
-    btn.ZIndex = 61
-
-    local ind = Instance.new("Frame", btn)
-    ind.Size = UDim2.fromOffset(4,18)
-    ind.Position = UDim2.new(1,-10,0.5,-9)
-    ind.BackgroundColor3 = Theme.Red
-    ind.ZIndex = 62
-    Instance.new("UICorner", ind)
-
-    btn.MouseButton1Click:Connect(function()
-        local i = table.find(RodList, rodName)
-        if i then
-            table.remove(RodList, i)
-            ind.BackgroundColor3 = Theme.Red
+--// LOOP : AUTO SELL
+task.spawn(function()
+    local timer = 0
+    while task.wait(0.5) do
+        if AUTO_SELL_ENABLED then
+            timer += 0.5
+            if timer >= AUTO_SELL_DELAY then
+                for rarity, enabled in pairs(selectedRarities) do
+                    if enabled then
+                        ReplicatedStorage.RequestSell:FireServer(rarity)
+                    end
+                end
+                timer = 0
+            end
         else
-            table.insert(RodList, rodName)
-            ind.BackgroundColor3 = Theme.Green
+            timer = 0
         end
-    end)
-end
-
--- 4. SELL FISH (PREMIUM OVERLAY)
-local sellDrop, sellStroke = createButton("SELL FISH MARKET  ▼", Color3.fromRGB(60,60,70), 5)
-
-local sellFrame = Instance.new("Frame", overlay)
-sellFrame.Size = UDim2.fromOffset(300,0)
-sellFrame.BackgroundColor3 = Color3.fromRGB(16,17,22)
-sellFrame.Visible = false
-sellFrame.ZIndex = 60
-sellFrame.ClipsDescendants = true
-Instance.new("UICorner", sellFrame).CornerRadius = UDim.new(0,14)
-
--- HEADER
-local header = Instance.new("TextLabel", sellFrame)
-header.Size = UDim2.new(1,0,0,36)
-header.Text = "SELL FISH"
-header.TextColor3 = Theme.Text
-header.Font = Enum.Font.GothamBold
-header.TextSize = 13
-header.BackgroundTransparency = 1
-
--- DIVIDER
-local div = Instance.new("Frame", sellFrame)
-div.Size = UDim2.new(1,-24,0,1)
-div.Position = UDim2.fromOffset(12,36)
-div.BackgroundColor3 = Color3.fromRGB(60,60,70)
-div.BackgroundTransparency = 0.6
-
--- LIST HOLDER
-local list = Instance.new("Frame", sellFrame)
-list.Position = UDim2.fromOffset(0,44)
-list.Size = UDim2.new(1,0,1,-44)
-list.BackgroundTransparency = 1
-
-local layout = Instance.new("UIListLayout", list)
-layout.Padding = UDim.new(0,6)
-layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
--- POSISI MENGIKUTI TOMBOL
-local function updateSellPos()
-    local p = sellDrop.AbsolutePosition
-    local s = sellDrop.AbsoluteSize
-    local m = main.AbsolutePosition
-
-    sellFrame.Position = UDim2.fromOffset(
-        p.X - m.X,
-        p.Y - m.Y + s.Y + 8
-    )
-end
-
--- TOGGLE
-sellDrop.MouseButton1Click:Connect(function()
-    updateSellPos()
-    sellFrame.Visible = not sellFrame.Visible
-
-    TweenService:Create(
-        sellFrame,
-        TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-        {
-            Size = sellFrame.Visible
-                and UDim2.fromOffset(300, 44 + #rarities * 34 + 10)
-                or UDim2.fromOffset(300, 0)
-        }
-    ):Play()
-end)
-
--- ITEM SELL
-for _, rarity in ipairs(rarities) do
-    local btn = Instance.new("TextButton", list)
-    btn.Size = UDim2.fromOffset(260,30)
-    btn.Text = "Sell "..rarity
-    btn.BackgroundColor3 = Theme.Secondary
-    btn.TextColor3 = Theme.TextDark
-    btn.Font = Enum.Font.GothamSemibold
-    btn.TextSize = 12
-    btn.AutoButtonColor = false
-    btn.ZIndex = 61
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0,8)
-
-    btn.MouseEnter:Connect(function()
-        btn.BackgroundColor3 = Color3.fromRGB(30,32,42)
-        btn.TextColor3 = Theme.Text
-    end)
-
-    btn.MouseLeave:Connect(function()
-        btn.BackgroundColor3 = Theme.Secondary
-        btn.TextColor3 = Theme.TextDark
-    end)
-
-    btn.MouseButton1Click:Connect(function()
-        ReplicatedStorage:WaitForChild("RequestSell"):FireServer(rarity)
-    end)
-end
-
--- 5. START BUTTON
-local toggle, toggleStroke = createButton("START FISHING", Theme.Green, 10)
-toggle.Size = UDim2.new(1, -4, 0, 55)
-toggle.TextSize = 16
-
-toggle.MouseButton1Click:Connect(function()
-    AUTO = not AUTO
-    if AUTO then
-        toggle.Text = "STOP SYSTEM"
-        toggleStroke.Color = Theme.Red
-        toggle.TextColor3 = Theme.Red
-    else
-        toggle.Text = "START FISHING"
-        toggleStroke.Color = Theme.Green
-        toggle.TextColor3 = Theme.Text
     end
 end)
 
---// ================= AUTO SELL SYSTEM (REPLACED BP LIST) =================
-local sellSystemFrame = Instance.new("Frame", main)
-sellSystemFrame.Size = UDim2.new(1, -30, 0, 110) -- Ukuran disesuaikan
-sellSystemFrame.Position = UDim2.new(0, 15, 1, -125)
-sellSystemFrame.BackgroundColor3 = Theme.Secondary
-Instance.new("UICorner", sellSystemFrame).CornerRadius = UDim.new(0, 10)
-
--- Membuat Label (Tulisan "Delay:")
-local delayLabel = Instance.new("TextLabel", sellSystemFrame)
-delayLabel.Size = UDim2.fromOffset(50, 20)
-delayLabel.Position = UDim2.fromOffset(10, 45) -- Di bawah tombol Toggle
-delayLabel.Text = "Delay (detik):"
-delayLabel.TextColor3 = Theme.TextDark
-delayLabel.BackgroundTransparency = 1
-delayLabel.TextSize = 12
-delayLabel.Font = Enum.Font.Gotham
-
--- Membuat Kotak Input (Tempat ngetik angka)
-local delayInput = Instance.new("TextBox", sellSystemFrame)
-delayInput.Size = UDim2.fromOffset(40, 20)
-delayInput.Position = UDim2.fromOffset(70, 45)
-delayInput.Text = tostring(AUTO_SELL_DELAY) -- Munculkan angka delay saat ini
-delayInput.BackgroundColor3 = Theme.Main
-delayInput.TextColor3 = Theme.Accent
-delayInput.Font = Enum.Font.GothamBold
-delayInput.TextSize = 12
-Instance.new("UICorner", delayInput)
-
-delayInput.FocusLost:Connect(function(enterPressed)
-    local angkaBaru = tonumber(delayInput.Text) -- Mengubah teks jadi angka
-    
-    if angkaBaru and angkaBaru >= 0.1 then
-        AUTO_SELL_DELAY = angkaBaru -- Simpan angka baru ke script
-        print("Jeda Auto Sell diganti ke: " .. angkaBaru)
-    else
-        -- Jika yang diketik bukan angka atau terlalu kecil, balikkan ke angka awal
-        delayInput.Text = tostring(AUTO_SELL_DELAY)
-    end
-end)
-
-local autoSellToggle = Instance.new("TextButton", sellSystemFrame)
-autoSellToggle.Size = UDim2.new(1, -20, 0, 30)
-autoSellToggle.Position = UDim2.fromOffset(10, 10)
-autoSellToggle.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-autoSellToggle.Text = "AUTO SELL: OFF"
-autoSellToggle.TextColor3 = Theme.Red
-autoSellToggle.Font = Enum.Font.GothamBold
-autoSellToggle.TextSize = 12
-Instance.new("UICorner", autoSellToggle)
-
-autoSellToggle.MouseButton1Click:Connect(function()
-    AUTO_SELL_ENABLED = not AUTO_SELL_ENABLED
-    autoSellToggle.Text = AUTO_SELL_ENABLED and "AUTO SELL: ON" or "AUTO SELL: OFF"
-    autoSellToggle.TextColor3 = AUTO_SELL_ENABLED and Theme.Green or Theme.Red
-end)
-
--- Checkbox Rarity (Mini List)
-local scrollSell = Instance.new("ScrollingFrame", sellSystemFrame)
-scrollSell.Size = UDim2.new(1, -20, 0, 50)
-scrollSell.Position = UDim2.fromOffset(10, 70)
-scrollSell.BackgroundTransparency = 1
-scrollSell.CanvasSize = UDim2.new(0, 0, 0, #rarities * 22)
-scrollSell.ScrollBarThickness = 2
-local sellLayout = Instance.new("UIListLayout", scrollSell)
-
-for _, rarity in ipairs(rarities) do
-    local row = Instance.new("Frame", scrollSell)
-    row.Size = UDim2.new(1, 0, 0, 20)
-    row.BackgroundTransparency = 1
-    
-    local check = Instance.new("TextButton", row)
-    check.Size = UDim2.fromOffset(16, 16)
-    check.Position = UDim2.fromOffset(0, 2)
-    check.Text = ""
-    check.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
-    Instance.new("UICorner", check)
-    
-    local lbl = Instance.new("TextLabel", row)
-    lbl.Size = UDim2.new(1, -25, 1, 0)
-    lbl.Position = UDim2.fromOffset(25, 0)
-    lbl.Text = rarity
-    lbl.TextColor3 = Theme.TextDark
-    lbl.Font = Enum.Font.Gotham
-    lbl.TextSize = 11
-    lbl.BackgroundTransparency = 1
-    lbl.TextXAlignment = "Left"
-    
-    check.MouseButton1Click:Connect(function()
-        selectedRarities[rarity] = not selectedRarities[rarity]
-        check.BackgroundColor3 = selectedRarities[rarity] and Theme.Green or Color3.fromRGB(50, 50, 60)
-    end)
-end
-
---// ================= WINDOW LOGIC =================
-closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
-
-local minimized = false
-miniBtn.MouseButton1Click:Connect(function()
-    minimized = not minimized
-
-    -- hide konten utama
-    container.Visible = not minimized
-
-    -- 🔥 hide panel auto sell agar tidak melayang saat di-minimize
-sellSystemFrame.Visible = not minimized
-
-    local targetSize = minimized
-        and UDim2.fromOffset(360, 50)
-        or UDim2.fromOffset(360, 480)
-
-    TweenService:Create(
-        main,
-        TweenInfo.new(0.5, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
-        {Size = targetSize}
-    ):Play()
-
-    miniBtn.Text = minimized and "+" or "−"
-end)
-
---// ================= CORE LOOP =================
+--// LOOP : FISHING
 task.spawn(function()
-    while task.wait(0.05) do
-        -- Logic Auto Sell (Cek setiap interval delay)
-        if AUTO_SELL_ENABLED and tick() % AUTO_SELL_DELAY < 0.1 then
-            for rarity, isSelected in pairs(selectedRarities) do
-                if isSelected then
-                    ReplicatedStorage:WaitForChild("RequestSell"):FireServer(rarity)
+    while task.wait(0.1) do
+        if AUTO and #RodList > 0 then
+            local rodName = RodList[RodIndex]
+            local rod = findRod(rodName)
+
+            if rod then
+                if rod.Parent ~= Player.Character then
+                    Player.Character.Humanoid:EquipTool(rod)
+                    task.wait(0.2)
                 end
+
+                pcall(function()
+                    rod.Mechanics.Remotes.CastEvent:FireServer(false, 7)
+
+                    local root = Player.Character:FindFirstChild("HumanoidRootPart")
+                    if root then
+                        ReplicatedStorage.Remotes.BaitLandedEvent:FireServer(
+                            rod,
+                            root.Position + (root.CFrame.LookVector * 15),
+                            "TerrainWater"
+                        )
+                    end
+
+                    task.wait(INPUT_DELAY)
+                    rod.Mechanics.Remotes.MiniGame:FireServer(true)
+                    task.wait(0.1)
+                    rod.Mechanics.Remotes.MiniGame:FireServer(false)
+                end)
             end
+
+            RodIndex = (RodIndex % #RodList) + 1
         end
-        if not AUTO then continue end
-        
-        local rod = getNextRod()
-        if not rod then continue end
-        equipRod(rod)
-        task.wait(0.1)
-        
-        pcall(function()
-            local camera = workspace.CurrentCamera
-            local defaultFOV = 70 -- Atur sesuai FOV normal kamu
-            
-            -- 🔥 FIX CAMERA GLITCH: Paksa kunci FOV agar tidak bisa diubah script lain
-            local cameraFix = game:GetService("RunService").RenderStepped:Connect(function()
-                camera.FieldOfView = defaultFOV
-            end)
-
-            -- 🔥 UI NUKER: Hapus UI secara instan saat muncul
-            local uiNuker = Player.PlayerGui.ChildAdded:Connect(function(child)
-                if child.Name:find("MiniGame") then
-                    task.wait() 
-                    child:Destroy()
-                end
-            end)
-
-            -- 2. Proses Casting
-            rod.Mechanics.Remotes.CastEvent:FireServer(false, 7)
-            
-            local castPos
-            local connection
-            connection = ReplicatedStorage.Remotes.BaitLandedEvent.OnClientEvent:Connect(function(pos)
-                castPos = pos
-                connection:Disconnect()
-            end)
-            
-            local timeout = 0
-            while not castPos and timeout < 0.2 do 
-                timeout = timeout + task.wait(0.01)
-            end
-            
-            if castPos then
-                ReplicatedStorage.Remotes.BaitLandedEvent:FireServer(rod, castPos, "TerrainWater")
-            end
-			
-			local root = Player.Character:FindFirstChild("HumanoidRootPart")
-            if root then
-                local instantPos = root.Position + (root.CFrame.LookVector * 15) + Vector3.new(0, -5, 0)
-                ReplicatedStorage.Remotes.BaitLandedEvent:FireServer(rod, instantPos, "TerrainWater")
-            end
-
-            -- 3. Selesaikan Minigame
-            task.wait(INPUT_DELAY)
-            rod.Mechanics.Remotes.MiniGame:FireServer(true)
-            task.wait(0.1)
-            rod.Mechanics.Remotes.MiniGame:FireServer(false)
-
-            -- 4. CLEANUP: Matikan pengunci kamera dan UI nuker
-            cameraFix:Disconnect()
-            uiNuker:Disconnect()
-            camera.FieldOfView = defaultFOV
-
-            -- 5. RE-EQUIP (Reset Rod)
-            if Player.Character and rod.Parent == Player.Character then
-                rod.Parent = Player.Backpack 
-                task.wait(0.1) 
-                Player.Character.Humanoid:EquipTool(rod) 
-            end
-        end)
-        
-        RodIndex = (RodIndex % #RodList) + 1
     end
 end)
-ShowWelcome()
